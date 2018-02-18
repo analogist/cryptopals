@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"errors"
 	"sort"
 	"bufio"
-	"io/ioutil"
 	"os"
 	"crypto/aes"
 	"encoding/base64"
@@ -59,42 +57,6 @@ func s1c1func() {
 	fmt.Println("Base64:", s1c1b64)
 }
 
-func decodehex(inputstr string) (output []byte, err error) {
-	input := []byte(inputstr)
-	if len(input) % 2 != 0 {
-		return nil, errors.New("Hex string does not have an even length")
-	}
-
-	output = make([]byte, len(input)/2)
-	for i := 0; i < len(output); i++ {
-		// assuming little endian
-		highnibble, err := decode1hex(input[i*2])
-		if err != nil {
-			return nil, err
-		}
-		lownibble, err := decode1hex(input[i*2+1])
-		if err != nil {
-			return nil, err
-		}
-		output[i] = highnibble << 4 | lownibble
-	}
-	return
-}
-
-func decode1hex(input byte) (byte, error) {
-	switch {
-	case input >= '0' && input <= '9':
-		input = input - '0'
-	case input >= 'A' && input <= 'F':
-		input = input - 'A' + 10
-	case input >= 'a' && input <= 'f':
-		input = input - 'a' + 10
-	default:
-		return 0, errors.New("Invalid hex byte")
-	}
-	return input, nil
-}
-
 func s1c2func() {
 
 	s1c2hex1 := "1c0111001f010100061a024b53535009181c"
@@ -116,34 +78,6 @@ func s1c2func() {
 	fmt.Println(encodehex(s1c2xor))
 }
 
-func encodehex(input []byte) (output string) {
-	hexbytes := make([]byte, len(input)*2)
-	hexarray := []byte("0123456789abcdef")
-
-	for i := 0; i < len(input); i++ {
-		hexbytes[i*2+1] = hexarray[input[i] & '\x0f'] // lower bit only
-		hexbytes[i*2] = hexarray[input[i] >> 4]
-	}
-
-	output = string(hexbytes)
-
-	return
-}
-
-func xorbytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
-	if len(buf1) != len(buf2) {
-		return nil, errors.New("Buffer lengths not identical")
-	}
-
-	buf3 = make([]byte, len(buf1))
-
-	for i := 0; i < len(buf1); i++ {
-		buf3[i] = buf1[i] ^ buf2[i]
-	}
-
-	return
-}
-
 func s1c3func() {
 
 	s1c3hex := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
@@ -157,65 +91,6 @@ func s1c3func() {
 
 	fmt.Printf("Top score: key 0x%2x decrypts to \"%s\"\n", topkey, xor1key(s1c3, topkey))
 
-}
-
-func xor1key(input []byte, key byte) (output []byte) {
-
-	output = make([]byte, len(input))
-
-	for i := 0; i < len(input); i++ {
-		output[i] = input[i] ^ key
-	}
-
-	return
-}
-
-func scoreenglish(input []byte) (score int) {
-	score = 0
-	for i := 0; i < len(input); i++ {
-		switch {
-		case input[i] >= 'A' && input[i] <= 'Z':
-			fallthrough
-		case input[i] >= 'a' && input[i] <= 'z':
-			fallthrough
-		case input[i] == ' ':
-			score += 2
-		case input[i] >= '0' && input[i] <= '9':
-			score += 2
-		case input[i] >= '!' && input[i] <= '/':
-			fallthrough
-		case input[i] >= '[' && input[i] <= '`':
-			score += 1
-		default:
-			score -= 2
-		}
-
-		for _, c := range "ETAOINetaoinSHRDLUshrdlu" {
-			if input[i] == byte(c) {
-				score += 2
-			}
-		}
-	}
-	return
-}
-
-func bruteforce1xor(inputstring []byte) (byte) {
-
-	type keysort struct {
-		Key byte
-		Score int
-	}
-
-	keyslice := make([]keysort, 256)
-	for key := byte(0); key < 255; key++ {
-		inputdecode := xor1key(inputstring, key)
-		keyslice[key].Key = key
-		keyslice[key].Score = scoreenglish(inputdecode)
-	}
-
-	sort.Slice(keyslice, func(i, j int) bool { return keyslice[i].Score < keyslice[j].Score })
-
-	return keyslice[255].Key
 }
 
 func s1c4func() {
@@ -272,18 +147,6 @@ func s1c5func() {
 
 	fmt.Println("Plaintext:", s1c5txt)
 	fmt.Println("Ciphertext:", encodehex(s1c5cipher))
-}
-
-func xorvigkey(input []byte, key []byte) (output []byte) {
-
-	output = make([]byte, len(input))
-
-	for i := 0; i < len(input); i++ {
-		vignereidx := i % len(key)
-		output[i] = input[i] ^ key[vignereidx]
-	}
-
-	return
 }
 
 func s1c6func() {
@@ -382,37 +245,6 @@ func s1c6func() {
 
 }
 
-func hammingdist(buf1 []byte, buf2 []byte) (distance int, err error) {
-	if len(buf1) != len(buf2) {
-		return 0, errors.New("Buffer lengths not identical")
-	}
-
-	distance = 0
-
-	for i := 0; i < len(buf1); i++ {
-		bufxor := buf1[i] ^ buf2[i]
-		for bufxor != 0 {
-			distance++
-			bufxor &= bufxor-1
-		}
-	}
-
-	return
-}
-
-func readbase64file(filename string) (datbytes []byte, err error) {
-	datbase64, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	bytestodecode := base64.StdEncoding.DecodedLen(len(datbase64))
-	datbytes = make([]byte, bytestodecode)
-	bytesdecoded, _ := base64.StdEncoding.Decode(datbytes, datbase64)
-	datbytes = datbytes[:bytesdecoded]
-
-	return
-}
-
 func s1c7func() {
 	s1c7bytes, err := readbase64file("sets-txt/1/7.txt")
 	if err != nil {
@@ -509,11 +341,4 @@ func s1c8func() {
 		fmt.Printf("Line %d minimum inter-block hamming distance = %d\n", keysizetestarr[ki].Line, keysizetestarr[ki].Hamdist)
 	}
 
-}
-
-func min(a, b int) (int) {
-	if a > b {
-		return b
-	}
-	return a
 }
