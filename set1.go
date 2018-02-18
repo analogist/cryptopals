@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 )
 
-func main() {
+func runset1() {
 	fmt.Println("\n-------------------")
 	fmt.Println("Set 1 / Challenge 1:")
 	s1c1func()
@@ -42,6 +42,7 @@ func main() {
 	fmt.Println("Set 1 / Challenge 8:")
 	s1c8func()
 }
+
 func s1c1func() {
 
 	s1c1hex := "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
