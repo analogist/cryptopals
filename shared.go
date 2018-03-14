@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"io/ioutil"
+	"bytes"
 	"encoding/base64"
 )
 
@@ -180,4 +181,17 @@ func min(a, b int) (int) {
 		return b
 	}
 	return a
+}
+
+func padpkcs7tolen(msg []byte, length int) ([]byte) {
+
+	if len(msg) % length == 0 {
+		return msg
+	} else {
+		// completeblocks := int(len(msg) / length)
+		padlen := length - (len(msg) % length)
+		padding := bytes.Repeat([]byte{'\x04'}, padlen)
+		msg = append(msg, padding...)
+		return msg
+	}
 }
