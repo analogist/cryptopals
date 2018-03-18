@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"bytes"
 	"encoding/base64"
+	"crypto/aes"
 )
 
 func DecodeHex(inputstr string) (output []byte, err error) {
@@ -181,6 +182,32 @@ func Min(a, b int) (int) {
 		return b
 	}
 	return a
+}
+
+func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
+	// Don't obviously actually ever use this
+
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        return nil, err
+    }
+
+    if len(input) % aes.BlockSize != 0 {
+		return nil, errors.New("File cipher contents not a multiple of AES blocksize")
+    }
+
+    output = make([]byte, len(input))
+
+    for i := 0; i < len(input) / aes.BlockSize; i++ {
+
+		blockstart := i*aes.BlockSize
+		blockstop := (i+1)*aes.BlockSize // not -1, because [:] exclusive
+
+		block.Decrypt(output[blockstart:blockstop],
+			input[blockstart:blockstop])
+    }
+
+    return output, nil
 }
 
 func PadPKCS7ToLen(msg []byte, length int) ([]byte) {

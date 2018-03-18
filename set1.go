@@ -5,9 +5,9 @@ import (
 	"sort"
 	"bufio"
 	"os"
-	"crypto/aes"
 	"encoding/base64"
-        ca "github.com/analogist/cryptopals/cryptanalysis"
+	"crypto/aes"
+    ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
 func runset1() {
@@ -255,22 +255,10 @@ func s1c7func() {
 
 	key := []byte("YELLOW SUBMARINE")
 
-    block, err := aes.NewCipher(key)
-    if err != nil {
-            panic(err.Error())
-    }
-
-    if len(s1c7bytes) % aes.BlockSize != 0 {
-    	panic("File cipher contents not a multiple of AES blocksize")
-    }
-
-    s1c7plaintext := make([]byte, len(s1c7bytes))
-    for i := 0; i < len(s1c7bytes) / aes.BlockSize; i++ {
-    	blockstart := i*aes.BlockSize
-    	blockstop := (i+1)*aes.BlockSize // not -1, because exclusive
-    	block.Decrypt(s1c7plaintext[blockstart:blockstop],
-    		s1c7bytes[blockstart:blockstop])
-    }
+	s1c7plaintext, err := ca.AESDecodeECB(s1c7bytes, key)
+	if err != nil {
+		panic(err)
+	}
 
     fmt.Printf("Decoding 7.txt using key \"YELLOW SUBMARINE\":\n")
 	fmt.Printf("%s", s1c7plaintext)
