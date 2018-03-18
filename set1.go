@@ -7,6 +7,7 @@ import (
 	"os"
 	"crypto/aes"
 	"encoding/base64"
+        ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
 func runset1() {
@@ -48,7 +49,7 @@ func s1c1func() {
 	s1c1hex := "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
 	fmt.Println("Hex:", s1c1hex)
 
-	s1c1, err := decodehex(s1c1hex)
+	s1c1, err := ca.DecodeHex(s1c1hex)
 	fmt.Printf("%x\n",s1c1)
 	if err != nil {
 		panic(err)
@@ -64,33 +65,33 @@ func s1c2func() {
 	s1c2hex2 := "686974207468652062756c6c277320657965"
 	fmt.Println(s1c2hex1, "^", s1c2hex2)
 	fmt.Println(" =")
-	s1c2buf1, err := decodehex(s1c2hex1)
+	s1c2buf1, err := ca.DecodeHex(s1c2hex1)
 	if err != nil {
 		panic(err)
 	}
-	s1c2buf2, err := decodehex(s1c2hex2)
+	s1c2buf2, err := ca.DecodeHex(s1c2hex2)
 	if err != nil {
 		panic(err)
 	}
-	s1c2xor, err := xorbytes(s1c2buf1, s1c2buf2)
+	s1c2xor, err := ca.XORBytes(s1c2buf1, s1c2buf2)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(encodehex(s1c2xor))
+	fmt.Println(ca.EncodeHex(s1c2xor))
 }
 
 func s1c3func() {
 
 	s1c3hex := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
 	fmt.Printf("Ciphertext: \"%s\"\n", s1c3hex)
-	s1c3, err := decodehex(s1c3hex)
+	s1c3, err := ca.DecodeHex(s1c3hex)
 	if err != nil {
 		panic(err)
 	}
 
-	topkey := bruteforce1xor(s1c3)
+	topkey := ca.BruteForce1XOR(s1c3)
 
-	fmt.Printf("Top score: key 0x%2x decrypts to \"%s\"\n", topkey, xor1key(s1c3, topkey))
+	fmt.Printf("Top score: key 0x%2x decrypts to \"%s\"\n", topkey, ca.XOR1Key(s1c3, topkey))
 
 }
 
@@ -119,16 +120,16 @@ func s1c4func() {
 		var key byte
 
 		linecount++
-		s1c4line, err := decodehex(linescan.Text())
+		s1c4line, err := ca.DecodeHex(linescan.Text())
 		if err != nil {
 			panic(err)
 		}
 
 		for key = 0; key < 255; key++ {
-			s1c4decode := xor1key(s1c4line, byte(key))
+			s1c4decode := ca.XOR1Key(s1c4line, byte(key))
 			keyline.Line = linecount
 			keyline.Key = key
-			keyline.Score = scoreenglish(s1c4decode)
+			keyline.Score = ca.ScoreEnglish(s1c4decode)
 			keyline.Plaintext = s1c4decode
 
 			keyslice = append(keyslice, keyline)
@@ -144,17 +145,17 @@ func s1c5func() {
 
 	s1c5txt := "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
 
-	s1c5cipher := xorvigkey([]byte(s1c5txt), []byte("ICE"))
+	s1c5cipher := ca.XORVigKey([]byte(s1c5txt), []byte("ICE"))
 
 	fmt.Println("Plaintext:", s1c5txt)
-	fmt.Println("Ciphertext:", encodehex(s1c5cipher))
+	fmt.Println("Ciphertext:", ca.EncodeHex(s1c5cipher))
 }
 
 func s1c6func() {
 	s1c6teststr1 := "this is a test"
 	s1c6teststr2 := "wokka wokka!!!"
 	fmt.Println(s1c6teststr1, "<>", s1c6teststr2)
-	dist, _ := hammingdist([]byte(s1c6teststr1), []byte(s1c6teststr2))
+	dist, _ := ca.HammingDist([]byte(s1c6teststr1), []byte(s1c6teststr2))
 	fmt.Printf("Hamming distance: %d\n", dist)
 
 	blockstotest := 30
@@ -197,7 +198,7 @@ func s1c6func() {
 		for blocks := 0; blocks < blockstotest-1; blocks++ {
 			block1 := blockchunks[blocks*keysize:(blocks+1)*keysize-1]
 			block2 := blockchunks[(blocks+1)*keysize:((blocks+2)*keysize-1)]
-			hamdist, err := hammingdist(block1, block2)
+			hamdist, err := ca.HammingDist(block1, block2)
 			if err != nil {
 				panic(err)
 			}
@@ -215,7 +216,7 @@ func s1c6func() {
 
 	s1c6file.Close()
 
-	s1c6bytes, err := readbase64file("sets-txt/1/6.txt")
+	s1c6bytes, err := ca.ReadBase64File("sets-txt/1/6.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -232,22 +233,22 @@ func s1c6func() {
 			for i := 0; i < bytesdecoded/keysize; i++ {
 				s1c6_segment[i] = s1c6bytes[i*keysize+j]
 			}
-			keyattempt[j] = bruteforce1xor(s1c6_segment)
+			keyattempt[j] = ca.BruteForce1XOR(s1c6_segment)
 		}
 		keysizetestarr[ki].KeyAttempt = keyattempt
-		keysizetestarr[ki].DecodeScore = scoreenglish(xorvigkey(s1c6bytes, keysizetestarr[ki].KeyAttempt))
+		keysizetestarr[ki].DecodeScore = ca.ScoreEnglish(ca.XORVigKey(s1c6bytes, keysizetestarr[ki].KeyAttempt))
 
 		fmt.Printf("Most likely key: \"%s\" with score %d\n", keysizetestarr[ki].KeyAttempt, keysizetestarr[ki].DecodeScore)
 	}
 
 	sort.Slice(keysizetestarr, func(i, j int) bool { return keysizetestarr[i].DecodeScore > keysizetestarr[j].DecodeScore })
 	fmt.Printf("\nUsing top-scoring key \"%s\" ", keysizetestarr[0].KeyAttempt)
-	fmt.Printf("most likely decoded plaintext:\n%s", xorvigkey(s1c6bytes, keysizetestarr[0].KeyAttempt))
+	fmt.Printf("most likely decoded plaintext:\n%s", ca.XORVigKey(s1c6bytes, keysizetestarr[0].KeyAttempt))
 
 }
 
 func s1c7func() {
-	s1c7bytes, err := readbase64file("sets-txt/1/7.txt")
+	s1c7bytes, err := ca.ReadBase64File("sets-txt/1/7.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -321,11 +322,11 @@ func s1c8func() {
 			for blocks := startblock+1; blocks < stopblock; blocks++ {
 				block1 := s1c8line[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize-1]
 				block2 := s1c8line[(blocks+1)*aes.BlockSize:((blocks+2)*aes.BlockSize-1)]
-				hamdist, err := hammingdist(block1, block2)
+				hamdist, err := ca.HammingDist(block1, block2)
 				if err != nil {
 					panic(err)
 				}
-				hammin = min(hammin, hamdist)
+				hammin = ca.Min(hammin, hamdist)
 			}
 			startblock++
 		}
