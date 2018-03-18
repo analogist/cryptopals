@@ -1,4 +1,4 @@
-package main
+package cryptanalysis
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"encoding/base64"
 )
 
-func decodehex(inputstr string) (output []byte, err error) {
+func DecodeHex(inputstr string) (output []byte, err error) {
 	input := []byte(inputstr)
 	if len(input) % 2 != 0 {
 		return nil, errors.New("Hex string does not have an even length")
@@ -17,11 +17,11 @@ func decodehex(inputstr string) (output []byte, err error) {
 	output = make([]byte, len(input)/2)
 	for i := 0; i < len(output); i++ {
 		// assuming little endian
-		highnibble, err := decode1hex(input[i*2])
+		highnibble, err := decode1Hex(input[i*2])
 		if err != nil {
 			return nil, err
 		}
-		lownibble, err := decode1hex(input[i*2+1])
+		lownibble, err := decode1Hex(input[i*2+1])
 		if err != nil {
 			return nil, err
 		}
@@ -30,7 +30,7 @@ func decodehex(inputstr string) (output []byte, err error) {
 	return
 }
 
-func decode1hex(input byte) (byte, error) {
+func decode1Hex(input byte) (byte, error) {
 	switch {
 	case input >= '0' && input <= '9':
 		input = input - '0'
@@ -45,7 +45,7 @@ func decode1hex(input byte) (byte, error) {
 }
 
 
-func encodehex(input []byte) (output string) {
+func EncodeHex(input []byte) (output string) {
 	hexbytes := make([]byte, len(input)*2)
 	hexarray := []byte("0123456789abcdef")
 
@@ -59,7 +59,7 @@ func encodehex(input []byte) (output string) {
 	return
 }
 
-func xorbytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
+func XORBytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 	if len(buf1) != len(buf2) {
 		return nil, errors.New("Buffer lengths not identical")
 	}
@@ -73,7 +73,7 @@ func xorbytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 	return
 }
 
-func xor1key(input []byte, key byte) (output []byte) {
+func XOR1Key(input []byte, key byte) (output []byte) {
 
 	output = make([]byte, len(input))
 
@@ -84,7 +84,7 @@ func xor1key(input []byte, key byte) (output []byte) {
 	return
 }
 
-func scoreenglish(input []byte) (score int) {
+func ScoreEnglish(input []byte) (score int) {
 	score = 0
 	for i := 0; i < len(input); i++ {
 		switch {
@@ -113,7 +113,7 @@ func scoreenglish(input []byte) (score int) {
 	return
 }
 
-func bruteforce1xor(inputstring []byte) (byte) {
+func BruteForce1XOR(inputstring []byte) (byte) {
 
 	type keysort struct {
 		Key byte
@@ -122,9 +122,9 @@ func bruteforce1xor(inputstring []byte) (byte) {
 
 	keyslice := make([]keysort, 256)
 	for key := byte(0); key < 255; key++ {
-		inputdecode := xor1key(inputstring, key)
+		inputdecode := XOR1Key(inputstring, key)
 		keyslice[key].Key = key
-		keyslice[key].Score = scoreenglish(inputdecode)
+		keyslice[key].Score = ScoreEnglish(inputdecode)
 	}
 
 	sort.Slice(keyslice, func(i, j int) bool { return keyslice[i].Score < keyslice[j].Score })
@@ -132,7 +132,7 @@ func bruteforce1xor(inputstring []byte) (byte) {
 	return keyslice[255].Key
 }
 
-func xorvigkey(input []byte, key []byte) (output []byte) {
+func XORVigKey(input []byte, key []byte) (output []byte) {
 
 	output = make([]byte, len(input))
 
@@ -144,7 +144,7 @@ func xorvigkey(input []byte, key []byte) (output []byte) {
 	return
 }
 
-func hammingdist(buf1 []byte, buf2 []byte) (distance int, err error) {
+func HammingDist(buf1 []byte, buf2 []byte) (distance int, err error) {
 	if len(buf1) != len(buf2) {
 		return 0, errors.New("Buffer lengths not identical")
 	}
@@ -162,7 +162,7 @@ func hammingdist(buf1 []byte, buf2 []byte) (distance int, err error) {
 	return
 }
 
-func readbase64file(filename string) (datbytes []byte, err error) {
+func ReadBase64File(filename string) (datbytes []byte, err error) {
 	datbase64, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -176,14 +176,14 @@ func readbase64file(filename string) (datbytes []byte, err error) {
 }
 
 
-func min(a, b int) (int) {
+func Min(a, b int) (int) {
 	if a > b {
 		return b
 	}
 	return a
 }
 
-func padpkcs7tolen(msg []byte, length int) ([]byte) {
+func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
 
 	if len(msg) % length == 0 {
 		return msg
