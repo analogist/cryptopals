@@ -9,6 +9,7 @@ import (
 	// "os"
 	// "crypto/aes"
 	// "encoding/base64"
+        ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
 func main() {
@@ -51,7 +52,7 @@ func runset2() {
 
 func s2c9func() {
 	s2c9str := "YELLOW SUBMARINE"
-	fmt.Printf("Padded: %2x", padpkcs7tolen([]byte(s2c9str), 20))
+	fmt.Printf("Padded: %2x", ca.PadPKCS7ToLen([]byte(s2c9str), 20))
 }
 
 func s2c10func() {
