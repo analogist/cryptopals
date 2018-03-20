@@ -2,14 +2,11 @@ package main
 
 import (
 	"fmt"
-	// "errors"
 	// "sort"
 	// "bufio"
 	// "io/ioutil"
 	// "os"
-	// "crypto/aes"
-	// "encoding/base64"
-        ca "github.com/analogist/cryptopals/cryptanalysis"
+    ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
 func main() {
@@ -56,5 +53,14 @@ func s2c9func() {
 }
 
 func s2c10func() {
-	
+	s2c10bytes, err := ca.ReadBase64File("sets-txt/2/10.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	iv := ca.PadZeroToLen([]byte{'\x00'}, 16)
+	s2c10text, err := ca.AESDecodeCBC(s2c10bytes, iv, []byte("YELLOW SUBMARINE"))
+
+	fmt.Printf("%s", s2c10text)
 }
+

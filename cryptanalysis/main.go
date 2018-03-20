@@ -68,7 +68,6 @@ func EncodeHex(input []byte) (output string) {
 
 // Wrap base64.StdEncoding.EncodeToString to wrap the library
 func EncodeBase64(input []byte) (output string) {
-
 	output = base64.StdEncoding.EncodeToString(input)
 	return
 }
@@ -90,7 +89,6 @@ func XORBytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 
 // XOR byte array of arbitrary length with single byte.
 func XOR1Key(input []byte, key byte) (output []byte) {
-
 	output = make([]byte, len(input))
 
 	for i := 0; i < len(input); i++ {
@@ -136,7 +134,6 @@ func ScoreEnglish(input []byte) (score int) {
 // Brute forces Vignere/shifted byte arrays, returns the byte
 // that decoded to the highest likelihood of plaintext English.
 func BruteForce1XOR(inputstring []byte) (byte) {
-
 	type keysort struct {
 		Key byte
 		Score int
@@ -157,7 +154,6 @@ func BruteForce1XOR(inputstring []byte) (byte) {
 // Implements Vignere cipher, with iterated byte shifts represented by
 // each byte in the byte array key.
 func XORVigKey(input []byte, key []byte) (output []byte) {
-
 	output = make([]byte, len(input))
 
 	for i := 0; i < len(input); i++ {
@@ -191,7 +187,6 @@ func HammingDist(buf1 []byte, buf2 []byte) (distance int, err error) {
 
 // Read in a Base64-encoded byte array and output a raw byte array.
 func DecodeBase64(input []byte) (output []byte, err error) {
-
 	bytestodecode := base64.StdEncoding.DecodedLen(len(input))
 	output = make([]byte, bytestodecode)
 
@@ -223,7 +218,6 @@ func ReadBase64File(filename string) (datbytes []byte, err error) {
 
 // Decode ECB-mode AES, given ciphertext and key, with standard AES blocksize.
 func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
-
     block, err := aes.NewCipher(key)
     if err != nil {
         return nil, err
@@ -240,8 +234,7 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
 		blockstart := i*aes.BlockSize
 		blockstop := (i+1)*aes.BlockSize // not -1, because [:] exclusive
 
-		block.Decrypt(output[blockstart:blockstop],
-			input[blockstart:blockstop])
+		block.Decrypt(output[blockstart:blockstop], input[blockstart:blockstop])
     }
 
     return output, nil
@@ -249,9 +242,9 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
 
 // Detect if ECB-mode AES was used by detecting each block's similarity to
 // any other blocks in the input ciphertext. Outputs minimum hamming distance
-// observed, ham_min
+// observed, ham_min.
+// The closer ham_min is to 0, the more likely ECB-mode blocks are present.
 func AESDetectECB(input []byte) (ham_min int, err error) {
-
 	const MaxHamming = aes.BlockSize*8
 
 	if len(input) % aes.BlockSize != 0 {
@@ -290,7 +283,6 @@ func min(a, b int) (int) {
 
 // Pads a byte array to arbitrary desired length with PKCS7 padding.
 func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
-
 	if len(msg) % length == 0 {
 		return msg
 	} else {
@@ -300,4 +292,59 @@ func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
 		msg = append(msg, padding...)
 		return msg
 	}
+}
+
+// Pads a byte array to arbitrary desired length with '\x00' padding.
+func PadZeroToLen(msg []byte, length int) ([]byte) {
+	if len(msg) % length == 0 {
+		return msg
+	} else {
+		// completeblocks := int(len(msg) / length)
+		padlen := length - (len(msg) % length)
+		padding := bytes.Repeat([]byte{'\x00'}, padlen)
+		msg = append(msg, padding...)
+		return msg
+	}
+}
+
+// Decode CBC-mode AES, given cipher, iv, and key.
+func AESDecodeCBC(input []byte, iv []byte, key []byte) (output []byte, err error) {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        return nil, err
+    }
+
+    if len(input) % aes.BlockSize != 0 {
+		return nil, errors.New("File cipher contents not a multiple of AES blocksize")
+    }
+    if len(iv) != aes.BlockSize {
+		return nil, errors.New("Length of iv is not AES blocksize")
+    }
+
+    output = make([]byte, len(input))
+
+    for i := 0; i < len(input) / aes.BlockSize; i++ {
+
+		blockstart := i*aes.BlockSize
+		blockstop := (i+1)*aes.BlockSize // not -1, because [:] exclusive
+		P_i := make([]byte, aes.BlockSize)
+		P_x := P_i
+
+		block.Decrypt(P_i, input[blockstart:blockstop])
+
+		if i == 0 {
+			P_x, err = XORBytes(P_i, iv)
+		} else {
+			prevstart := (i-1)*aes.BlockSize
+			P_x, err = XORBytes(P_i, input[prevstart:blockstart])
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		copy(output[blockstart:blockstop], P_x)
+    }
+
+    return output, nil
 }
