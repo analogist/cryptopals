@@ -1,3 +1,6 @@
+// Used in github.com/analogist/cryptopals for the Matasano cryptopals
+// challenges. This constitutes a set of cryptanalysis tools written
+// from scratch as an exercise.
 package cryptanalysis
 
 import (
@@ -9,6 +12,8 @@ import (
 	"crypto/aes"
 )
 
+// Basic reimplementation of encoding/hex.Decode()
+// Converts hex encoded string to raw byte array.
 func DecodeHex(inputstr string) (output []byte, err error) {
 	input := []byte(inputstr)
 	if len(input) % 2 != 0 {
@@ -45,7 +50,8 @@ func decode1Hex(input byte) (byte, error) {
 	return input, nil
 }
 
-
+// Basic reimplementation of encoding/hex.EncodeToString().
+// Converts raw byte array to hex encoded string.
 func EncodeHex(input []byte) (output string) {
 	hexbytes := make([]byte, len(input)*2)
 	hexarray := []byte("0123456789abcdef")
@@ -60,6 +66,7 @@ func EncodeHex(input []byte) (output string) {
 	return
 }
 
+// XOR two equal length byte arrays buf1 ^ buf2.
 func XORBytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 	if len(buf1) != len(buf2) {
 		return nil, errors.New("Buffer lengths not identical")
@@ -74,6 +81,7 @@ func XORBytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 	return
 }
 
+// XOR byte array of arbitrary length with single byte.
 func XOR1Key(input []byte, key byte) (output []byte) {
 
 	output = make([]byte, len(input))
@@ -85,6 +93,10 @@ func XOR1Key(input []byte, key byte) (output []byte) {
 	return
 }
 
+// Checks decoding attempts for likelihood of plaintext english.
+// Rates a single byte array as a single score.
+// Positive scores are more likely to be English,
+// Negative scores are more likely to be encrypted bytes.
 func ScoreEnglish(input []byte) (score int) {
 	score = 0
 	for i := 0; i < len(input); i++ {
@@ -114,6 +126,8 @@ func ScoreEnglish(input []byte) (score int) {
 	return
 }
 
+// Brute forces Vignere/shifted byte arrays, returns the byte
+// that decoded to the highest likelihood of plaintext English.
 func BruteForce1XOR(inputstring []byte) (byte) {
 
 	type keysort struct {
@@ -133,6 +147,8 @@ func BruteForce1XOR(inputstring []byte) (byte) {
 	return keyslice[255].Key
 }
 
+// Implements Vignere cipher, with iterated byte shifts represented by
+// each byte in the byte array key.
 func XORVigKey(input []byte, key []byte) (output []byte) {
 
 	output = make([]byte, len(input))
@@ -145,6 +161,9 @@ func XORVigKey(input []byte, key []byte) (output []byte) {
 	return
 }
 
+// Computes Hamming distance of two byte arrays; outputs distance,
+// which represents the minimum bit flips required to make byte arrays
+// identical.
 func HammingDist(buf1 []byte, buf2 []byte) (distance int, err error) {
 	if len(buf1) != len(buf2) {
 		return 0, errors.New("Buffer lengths not identical")
@@ -163,6 +182,8 @@ func HammingDist(buf1 []byte, buf2 []byte) (distance int, err error) {
 	return
 }
 
+// Read in a Base64-encoded file and output a truncated byte array
+// to the successfully decoded length.
 func ReadBase64File(filename string) (datbytes []byte, err error) {
 	datbase64, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -184,8 +205,9 @@ func Min(a, b int) (int) {
 	return a
 }
 
+// Decode ECB-mode AES, given ciphertext and key, with standard AES blocksize.
 func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
-	// Don't obviously actually ever use this
+	// Don't obviously actually ever use this encryption
 
     block, err := aes.NewCipher(key)
     if err != nil {
@@ -210,6 +232,9 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
     return output, nil
 }
 
+func DetectECB()
+
+// Pads a byte array to arbitrary desired length with PKCS7 padding.
 func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
 
 	if len(msg) % length == 0 {
