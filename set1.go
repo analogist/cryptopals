@@ -53,7 +53,7 @@ func s1c1func() {
 		panic(err)
 	}
 
-	s1c1b64 := base64.StdEncoding.EncodeToString(s1c1)
+	s1c1b64 := ca.EncodeBase64(s1c1)
 	fmt.Println("Base64:", s1c1b64)
 }
 

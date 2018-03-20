@@ -66,6 +66,13 @@ func EncodeHex(input []byte) (output string) {
 	return
 }
 
+// Wrap base64.StdEncoding.EncodeToString to wrap the library
+func EncodeBase64(input []byte) (output string) {
+
+	output = base64.StdEncoding.EncodeToString(input)
+	return
+}
+
 // XOR two equal length byte arrays buf1 ^ buf2.
 func XORBytes(buf1 []byte, buf2 []byte) (buf3 []byte, err error) {
 	if len(buf1) != len(buf2) {
