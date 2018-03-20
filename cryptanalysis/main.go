@@ -182,6 +182,23 @@ func HammingDist(buf1 []byte, buf2 []byte) (distance int, err error) {
 	return
 }
 
+// Read in a Base64-encoded byte array and output a raw byte array.
+func DecodeBase64(input []byte) (output []byte, err error) {
+
+	bytestodecode := base64.StdEncoding.DecodedLen(len(input))
+	output = make([]byte, bytestodecode)
+
+	bytesdecoded, err := base64.StdEncoding.Decode(output, input)
+	if err != nil {
+		return nil, err
+	}
+
+	// truncate for any \n, \r, invalid chars in Base64 string
+	output = output[:bytesdecoded]
+
+	return output, nil
+}
+
 // Read in a Base64-encoded file and output a truncated byte array
 // to the successfully decoded length.
 func ReadBase64File(filename string) (datbytes []byte, err error) {

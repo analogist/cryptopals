@@ -267,8 +267,6 @@ func s1c8func() {
 	type keysizestruct struct {
 		Line int
 		Hamdist int
-		// DecodeScore int
-		// KeyAttempt []byte
 	}
 	var keysizetestarr []keysizestruct
 
@@ -286,10 +284,7 @@ func s1c8func() {
 		var linekey keysizestruct
 		linecount++
 
-		bytestodecode := base64.StdEncoding.DecodedLen(len(linescan.Bytes()))
-		s1c8line := make([]byte, bytestodecode)
-		bytesdecoded, err := base64.StdEncoding.Decode(s1c8line, linescan.Bytes())
-		s1c8line = s1c8line[:bytesdecoded]
+		s1c8line, err := ca.DecodeBase64(linescan.Bytes())
 		if err != nil {
 			panic(err)
 		}
