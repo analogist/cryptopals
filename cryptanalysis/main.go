@@ -197,17 +197,8 @@ func ReadBase64File(filename string) (datbytes []byte, err error) {
 	return
 }
 
-
-func Min(a, b int) (int) {
-	if a > b {
-		return b
-	}
-	return a
-}
-
 // Decode ECB-mode AES, given ciphertext and key, with standard AES blocksize.
 func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
-	// Don't obviously actually ever use this encryption
 
     block, err := aes.NewCipher(key)
     if err != nil {
@@ -232,7 +223,46 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
     return output, nil
 }
 
-func DetectECB()
+// Detect if ECB-mode AES was used by detecting each block's similarity to
+// any other blocks in the input ciphertext. Outputs minimum hamming distance
+// observed, ham_min
+func DetectECB(input []byte) (ham_min int, err error) {
+
+	const MaxHamming = aes.BlockSize*8
+
+	if len(input) % aes.BlockSize != 0 {
+		return MaxHamming, errors.New("input byte len not multiple of AES block size")
+	}
+
+	blockstotest := len(input) / aes.BlockSize
+
+	ham_min = MaxHamming // start the minimum distance at the max possible
+
+	startblock := 0
+	stopblock := blockstotest-1
+
+	for startblock != stopblock {
+		for blocks := startblock+1; blocks < stopblock; blocks++ {
+			block1 := input[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize-1]
+			block2 := input[(blocks+1)*aes.BlockSize:((blocks+2)*aes.BlockSize-1)]
+			hamdist, err := HammingDist(block1, block2)
+			if err != nil {
+				return ham_min, err
+			}
+			ham_min = min(ham_min, hamdist)
+		}
+		startblock++
+	}
+
+	return ham_min, nil
+}
+
+func min(a, b int) (int) {
+	if a > b {
+		return b
+	}
+	return a
+}
 
 // Pads a byte array to arbitrary desired length with PKCS7 padding.
 func PadPKCS7ToLen(msg []byte, length int) ([]byte) {

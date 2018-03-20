@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"os"
 	"encoding/base64"
-	"crypto/aes"
     ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
@@ -295,32 +294,11 @@ func s1c8func() {
 			panic(err)
 		}
 
-		if bytesdecoded%aes.BlockSize != 0 {
-			panic("Error: bytes of line is not AES block size")
-		}
-		blockstotest := bytesdecoded / aes.BlockSize
-
-		// hamdistsum := 0
-		hammin := aes.BlockSize*8 // start the minimum comparison at the max possible
-
-		startblock := 0
-		stopblock := blockstotest-1
-
-		for startblock != stopblock {
-			for blocks := startblock+1; blocks < stopblock; blocks++ {
-				block1 := s1c8line[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize-1]
-				block2 := s1c8line[(blocks+1)*aes.BlockSize:((blocks+2)*aes.BlockSize-1)]
-				hamdist, err := ca.HammingDist(block1, block2)
-				if err != nil {
-					panic(err)
-				}
-				hammin = ca.Min(hammin, hamdist)
-			}
-			startblock++
-		}
-
 		linekey.Line = linecount
-		linekey.Hamdist = hammin
+		linekey.Hamdist, err = ca.DetectECB(s1c8line)
+		if err != nil {
+			panic(err)
+		}
 
 		keysizetestarr = append(keysizetestarr, linekey)
 	}
