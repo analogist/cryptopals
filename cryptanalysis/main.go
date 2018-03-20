@@ -250,7 +250,7 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
 // Detect if ECB-mode AES was used by detecting each block's similarity to
 // any other blocks in the input ciphertext. Outputs minimum hamming distance
 // observed, ham_min
-func DetectECB(input []byte) (ham_min int, err error) {
+func AESDetectECB(input []byte) (ham_min int, err error) {
 
 	const MaxHamming = aes.BlockSize*8
 

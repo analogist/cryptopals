@@ -295,7 +295,7 @@ func s1c8func() {
 		}
 
 		linekey.Line = linecount
-		linekey.Hamdist, err = ca.DetectECB(s1c8line)
+		linekey.Hamdist, err = ca.AESDetectECB(s1c8line)
 		if err != nil {
 			panic(err)
 		}
