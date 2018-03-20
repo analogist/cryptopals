@@ -5,7 +5,6 @@ import (
 	"sort"
 	"bufio"
 	"os"
-	"encoding/base64"
     ca "github.com/analogist/cryptopals/cryptanalysis"
 )
 
@@ -179,16 +178,22 @@ func s1c6func() {
 	for keysize := 2; keysize < 40; keysize++ {
 
 		var keysizetest keysizestruct // Holds each stored decode attempt
-		bytestoread := base64.StdEncoding.EncodedLen(blockstotest*keysize)
-		bytestoread = bytestoread + bytestoread/60 // 1 every 60 chars will be garbage due to '\n'
+
+		// This is slightly more than base64.StdEncoding.EncodedLen() due to '\n'
+		bytestoread := (blockstotest*keysize + 2) * 8 / 6 // every 8 char is 6 bytes
+		bytestoread = bytestoread + bytestoread/60 + 2 // 1 every 60 chars will be garbage due to '\n'
 
 		blockchunks64, err := s1c6filestream.Peek(bytestoread)
 		if err != nil {
 			panic(err)
 		}
 
-		blockchunks := make([]byte, blockstotest*keysize+2)
-		bytesdecoded, _ := base64.StdEncoding.Decode(blockchunks, blockchunks64)
+		blockchunks, err := ca.DecodeBase64(blockchunks64)
+		if err != nil {
+			panic(err)
+		}
+
+		bytesdecoded := len(blockchunks)
 		if bytesdecoded < blockstotest*keysize {
 			panic("Not enough bytes decoded from base64")
 		}
