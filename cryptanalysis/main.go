@@ -256,12 +256,15 @@ func AESDetectECB(input []byte) (ham_min int, err error) {
 	ham_min = MaxHamming // start the minimum distance at the max possible
 
 	startblock := 0
-	stopblock := blockstotest-1
 
-	for startblock != stopblock {
-		for blocks := startblock+1; blocks < stopblock; blocks++ {
-			block1 := input[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize-1]
-			block2 := input[(blocks+1)*aes.BlockSize:((blocks+2)*aes.BlockSize-1)]
+	// Compare:
+	// 0-1, 0-2, 0-3, 0-4, ... 0-(blockstotest-1)
+	// 1-2, 1-3, 1-4, ... 1-(blockstotest-1)
+	// 2-3, 2-4, 2-5, ... 2-(blockstotest-1)
+	for startblock != blockstotest {
+		block1 := input[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize]
+		for blocks := startblock+1; blocks < blockstotest; blocks++ {
+			block2 := input[(blocks)*aes.BlockSize:((blocks+1)*aes.BlockSize)]
 			hamdist, err := HammingDist(block1, block2)
 			if err != nil {
 				return ham_min, err
@@ -281,12 +284,11 @@ func min(a, b int) (int) {
 	return a
 }
 
-// Pads a byte array to arbitrary desired length with PKCS7 padding.
+// Pads a byte array to arbitrary desired block length with PKCS7 padding.
 func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
 	if len(msg) % length == 0 {
 		return msg
 	} else {
-		// completeblocks := int(len(msg) / length)
 		padlen := length - (len(msg) % length)
 		padding := bytes.Repeat([]byte{'\x04'}, padlen)
 		msg = append(msg, padding...)
@@ -299,7 +301,6 @@ func PadZeroToLen(msg []byte, length int) ([]byte) {
 	if len(msg) % length == 0 {
 		return msg
 	} else {
-		// completeblocks := int(len(msg) / length)
 		padlen := length - (len(msg) % length)
 		padding := bytes.Repeat([]byte{'\x00'}, padlen)
 		msg = append(msg, padding...)
