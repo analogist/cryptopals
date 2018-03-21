@@ -429,8 +429,8 @@ func AESPuzzleECBCBC(input []byte) (output []byte, err error) {
 
 	mrand.Seed(time.Now().UTC().UnixNano()) // this is NOT secure random
 
-	prepad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(5) + 5) // 5-10 bytes padding
-	postpad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(5) + 5)
+	prepad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(6) + 5) // 5-10 bytes padding
+	postpad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(6) + 5)
 	plaintext := append(prepad, input...)
 	plaintext = append(plaintext, postpad...)
 

@@ -22,9 +22,9 @@ func runset2() {
 	fmt.Println("Set 2 / Challenge 10:")
 	s2c10func()
 
-	// fmt.Println("\n-------------------")
-	// fmt.Println("Set 2 / Challenge 11:")
-	// s2c11func()
+	fmt.Println("\n-------------------")
+	fmt.Println("Set 2 / Challenge 11:")
+	s2c11func()
 
 	// fmt.Println("\n-------------------")
 	// fmt.Println("Set 2 / Challenge 12:")
@@ -64,3 +64,28 @@ func s2c10func() {
 	fmt.Printf("%s", s2c10text)
 }
 
+func s2c11func() {
+	s2c11text := []byte("THE WHEELS ON THE BUS GO ROUND AND ROUND ROUND AND ROUND ROUND AND ROUND\nTHE WHEELS ON THE BUS GO ROUND AND ROUND ALL THROUGH THE TOWN")
+	const s2c11rounds = 20
+	fmt.Printf("Running %d rounds of ECB/CBC:\n", s2c11rounds)
+	for i := 0; i < s2c11rounds; i++ {
+		ciphertext, err := ca.AESPuzzleECBCBC(s2c11text)
+		if err != nil {
+			panic(err)
+		}
+
+		score, err := ca.AESDetectECB(ciphertext)
+		if err != nil {
+			panic(err)
+		}
+
+		var probablemode string
+		if score <= 8 {
+			probablemode = "ECB"
+		} else {
+			probablemode = "CBC"
+		}
+
+		fmt.Printf("Run %2d: %s (Hamming = %d)\n", i, probablemode, score)
+	}
+}
