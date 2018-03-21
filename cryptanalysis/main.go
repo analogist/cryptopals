@@ -10,6 +10,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"crypto/aes"
+	crand "crypto/rand"
+	mrand "math/rand"
+	"time"
 )
 
 // Basic reimplementation of encoding/hex.Decode()
@@ -348,4 +351,100 @@ func AESDecodeCBC(input []byte, iv []byte, key []byte) (output []byte, err error
     }
 
     return output, nil
+}
+
+// Encode ECB-mode AES, given ciphertext and key, with standard AES blocksize.
+// NEVER ACTUALLY USE THIS IN ANY SECURE CONTEXT.
+// Well, never use anything here in any secure context but ESPECIALLY THIS.
+func AESEncodeECB(input []byte, key []byte) (output []byte, err error) {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        return nil, err
+    }
+
+    if len(input) % aes.BlockSize != 0 {
+		return nil, errors.New("File cipher contents not a multiple of AES blocksize")
+    }
+
+    output = make([]byte, len(input))
+
+    for i := 0; i < len(input) / aes.BlockSize; i++ {
+
+		blockstart := i*aes.BlockSize
+		blockstop := (i+1)*aes.BlockSize // not -1, because [:] exclusive
+
+		block.Encrypt(output[blockstart:blockstop], input[blockstart:blockstop])
+    }
+
+    return output, nil
+}
+
+// Encode CBC-mode AES, given cipher, iv, and key.
+func AESEncodeCBC(input []byte, iv []byte, key []byte) (output []byte, err error) {
+    block, err := aes.NewCipher(key)
+    if err != nil {
+        return nil, err
+    }
+
+    if len(input) % aes.BlockSize != 0 {
+		return nil, errors.New("File cipher contents not a multiple of AES blocksize")
+    }
+    if len(iv) != aes.BlockSize {
+		return nil, errors.New("Length of iv is not AES blocksize")
+    }
+
+    output = make([]byte, len(input))
+
+    for i := 0; i < len(input) / aes.BlockSize; i++ {
+
+		blockstart := i*aes.BlockSize
+		blockstop := (i+1)*aes.BlockSize // not -1, because [:] exclusive
+		E_i := make([]byte, aes.BlockSize)
+
+		if i == 0 {
+			E_i, err = XORBytes(input[blockstart:blockstop], iv)
+		} else {
+			prevstart := (i-1)*aes.BlockSize
+			E_i, err = XORBytes(input[blockstart:blockstop], output[prevstart:blockstart])
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		block.Encrypt(output[blockstart:blockstop], E_i)
+    }
+
+    return output, nil
+}
+
+// Creates a puzzle ciphertext with a random encryption key, 50% chance of ECB or CBC-mode.
+// Random key, random iv
+func AESPuzzleECBCBC(input []byte) (output []byte, err error) {
+	// Gen random unknown key, iv
+	randkey := make([]byte, aes.BlockSize)
+	iv := randkey
+	crand.Read(randkey) // this is secure random
+	crand.Read(iv)
+
+	mrand.Seed(time.Now().UTC().UnixNano()) // this is NOT secure random
+
+	prepad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(5) + 5) // 5-10 bytes padding
+	postpad := bytes.Repeat([]byte{'\x04'}, mrand.Intn(5) + 5)
+	plaintext := append(prepad, input...)
+	plaintext = append(plaintext, postpad...)
+
+	plaintext = PadPKCS7ToLen(plaintext, aes.BlockSize)
+
+	if mrand.Intn(2) == 1 { // 1 == ECB
+		output, err = AESEncodeECB(plaintext, randkey)
+	} else { // 0 == CBC
+		output, err = AESEncodeCBC(plaintext, iv, randkey)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }
