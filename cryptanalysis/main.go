@@ -305,16 +305,9 @@ func PadPKCS7ToLen(msg []byte, length int) ([]byte) {
 	}
 }
 
-// Pads a byte array to arbitrary desired length with '\x00' padding.
-func PadZeroToLen(msg []byte, length int) ([]byte) {
-	if len(msg) % length == 0 {
-		return msg
-	} else {
-		padlen := length - (len(msg) % length)
-		padding := bytes.Repeat([]byte{'\x00'}, padlen)
-		msg = append(msg, padding...)
-		return msg
-	}
+// Repeats byte array "msg" [length] times
+func RepeatBytes(msg []byte, length int) ([]byte) {
+	return bytes.Repeat(msg, length)
 }
 
 // Decode CBC-mode AES, given cipher, iv, and key.
@@ -453,4 +446,142 @@ func AESPuzzleECBCBC(input []byte) (output []byte, err error) {
 	}
 
 	return output, nil
+}
+
+// A known-plaintext AES byte-at-a-time puzzle with an unknown
+// target string unknownbase64, encrypted with a fixed random key
+func AESOracleECB(input []byte) (output []byte, err error) {
+	const randkeybase64 = "5gp3ruRcNe5SRhGi6BxCzQ==" // fixed random
+	const unknownbase64 = `Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkg
+aGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBq
+dXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUg
+YnkK` // fixed text from s2c12
+
+	randkey, err := DecodeBase64([]byte(randkeybase64))
+	if err != nil {
+		return nil, err
+	}
+
+	unknowntext, err := DecodeBase64([]byte(unknownbase64))
+	if err != nil {
+		return nil, err
+	}
+
+	input = append(input, unknowntext...)
+	input = PadPKCS7ToLen(input, aes.BlockSize)
+	output, err = AESEncodeECB(input, randkey)
+
+	return
+}
+
+// Oracle function type: can be passed into Oracle detection or
+// brute force functions with oracle type
+type oracle func([]byte) ([]byte, error)
+
+// Given an ECB oracle with form input || unknowntext, detect its
+// blocksize
+func DetectAESOracleBlocksize(oraclefunc oracle, MaxBlockSizeTry int) (blocksize int, err error) {
+	blocksize = 0
+	for i := 1; i <= MaxBlockSizeTry; i++ {
+		myInput := RepeatBytes([]byte("A"), i*2)
+		// 2*n byte injections are needed for blocksize n
+
+		oracleOutput, err := oraclefunc(myInput)
+		if err != nil {
+			return blocksize, err
+		}
+
+		hammingScore, err := AESDetectECB(oracleOutput)
+		if err != nil {
+			return blocksize, err
+		}
+		if hammingScore == 0 {
+			blocksize = i
+			break
+		}
+	}
+	if blocksize == 0 {
+		return 0, errors.New("blocksize not found!")
+	}
+
+	return blocksize, nil
+}
+
+// Given an ECB oracle with form input || unknowntext,
+// brute force unknowntext
+func BruteForceAESOracleECB(oraclefunc oracle, blocksize int) (plaintext []byte, err error) {
+	// Determine the length of the unknowntext
+	oracleOutput, err := oraclefunc(nil)
+	if err != nil {
+		return nil, err
+	}
+	unknownlen := len(oracleOutput)
+	plaintext = make([]byte, unknownlen)
+	// Determine the # of blocks in unknowntext
+	numblocks := unknownlen / blocksize
+
+	// Brute force plaintext
+	lastblock := RepeatBytes([]byte("A"), blocksize) // "-1th" block
+	for block := 0; block < numblocks; block++ {
+		blockstart := block*blocksize
+		blockstop := (block+1)*blocksize
+		blocktext := make([]byte, blocksize)
+
+		knownpos := 0
+		for ; knownpos < blocksize; knownpos++ {
+			knownbyte := byte(255)
+			myInput := make([]byte, blocksize-knownpos-1)
+			// This part always feeds in blocksize-knownpos-1
+			// bytes to create the byte-at-a-time oracle
+			// at block boundary
+			copy(myInput, lastblock[knownpos+1:blocksize])
+			// No lastblock solved yet, use
+			// AAAAAAAAAAAAAAA
+			// AAAAAAAAAAAAAA
+			// AAAAAAAAAAAAA
+			// ...
+			// Else use last block solved
+			// BCDEFGHIJKLMNOP
+			// CDEFGHIJKLMNOP
+			// DEFGHIJKLMNOP
+			// ...
+			refOut, err := oraclefunc(myInput)
+			if err != nil {
+				return nil, err
+			}
+			for byteA := byte(0); byteA < 255; byteA++ {
+				// This part always feeds in blocksize bytes
+				// tryInput = [myInput][blocktext]byteA
+				// If block 0,
+				// first [AAAAAAAAAAAAAAA][]A
+				// then, [AAAAAAAAAAAAAA][A]B
+				// then, [AAAAAAAAAAAAA][AB]C
+				// If block >=1,
+				// first [BCDEFGHIJKLMNOP][]A
+				// then, [CDEFGHIJKLMNOP][A]B
+				// then, [DEFGHIJKLMNOP][AB]C
+				tryInput := append(myInput, blocktext[:knownpos]...)
+				tryInput = append(tryInput, byteA)
+				tryOut, err := oraclefunc(tryInput)
+				if err != nil {
+					return nil, err
+				}
+				// tryOut[:blocksize] is always located at the 0th block, but copied from
+				// either generated AAAAA... or last solved block
+				// refOut[blockstart:blockstop] located at the actual block boundary tested
+				if bytes.Compare(tryOut[:blocksize], refOut[blockstart:blockstop]) == 0 {
+					knownbyte = byteA
+					break
+				}
+			}
+			if knownbyte == byte(255) {
+				return nil, errors.New("failed at determining byte")
+			}
+			blocktext[knownpos] = knownbyte
+		}
+		copy(plaintext[blockstart:blockstop], blocktext)
+		lastblock = blocktext
+	}
+
+	return plaintext, nil
 }

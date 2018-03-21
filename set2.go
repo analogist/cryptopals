@@ -26,9 +26,9 @@ func runset2() {
 	fmt.Println("Set 2 / Challenge 11:")
 	s2c11func()
 
-	// fmt.Println("\n-------------------")
-	// fmt.Println("Set 2 / Challenge 12:")
-	// s2c12func()
+	fmt.Println("\n-------------------")
+	fmt.Println("Set 2 / Challenge 12:")
+	s2c12func()
 
 	// fmt.Println("\n-------------------")
 	// fmt.Println("Set 2 / Challenge 13:")
@@ -58,14 +58,19 @@ func s2c10func() {
 		panic(err)
 	}
 
-	iv := ca.PadZeroToLen([]byte{'\x00'}, 16)
+	iv := ca.RepeatBytes([]byte{'\x00'}, 16)
 	s2c10text, err := ca.AESDecodeCBC(s2c10bytes, iv, []byte("YELLOW SUBMARINE"))
 
 	fmt.Printf("%s", s2c10text)
 }
 
 func s2c11func() {
-	s2c11text := []byte("THE WHEELS ON THE BUS GO ROUND AND ROUND ROUND AND ROUND ROUND AND ROUND\nTHE WHEELS ON THE BUS GO ROUND AND ROUND ALL THROUGH THE TOWN")
+	s2c11text := []byte(
+`THE WHEELS ON THE BUS GO ROUND AND ROUND
+ROUND AND ROUND
+ROUND AND ROUND
+THE WHEELS ON THE BUS GO ROUND AND ROUND ALL THROUGH THE TOWN`)
+
 	const s2c11rounds = 20
 	fmt.Printf("Running %d rounds of ECB/CBC:\n", s2c11rounds)
 	for i := 0; i < s2c11rounds; i++ {
@@ -88,4 +93,20 @@ func s2c11func() {
 
 		fmt.Printf("Run %2d: %s (Hamming = %d)\n", i, probablemode, score)
 	}
+}
+
+func s2c12func() {
+	const MaxBlockSizeTry = 64
+
+	blocksize, err := ca.DetectAESOracleBlocksize(ca.AESOracleECB, MaxBlockSizeTry)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Found ECB blocksize: %d\n", blocksize)
+
+	plaintext, err := ca.BruteForceAESOracleECB(ca.AESOracleECB, blocksize)
+        if err != nil {
+            panic(err)
+        }
+	fmt.Printf("%s\n", plaintext)
 }
