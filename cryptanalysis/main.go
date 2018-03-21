@@ -247,14 +247,20 @@ func AESDecodeECB(input []byte, key []byte) (output []byte, err error) {
 // any other blocks in the input ciphertext. Outputs minimum hamming distance
 // observed, ham_min.
 // The closer ham_min is to 0, the more likely ECB-mode blocks are present.
-func AESDetectECB(input []byte) (ham_min int, err error) {
-	const MaxHamming = aes.BlockSize*8
+func AESDetectECB(input []byte, blocksizeoverride ...int) (ham_min int, err error) {
+	blocksize := aes.BlockSize // default is AES
+	if len(blocksizeoverride) > 1 {
+		return 999, errors.New("too many blocksizes specified")
+	} else if len(blocksizeoverride) == 1 {
+		blocksize = blocksizeoverride[0] // if you really wanted to override blocksize
+	}
+	MaxHamming := blocksize*8
 
-	if len(input) % aes.BlockSize != 0 {
-		return MaxHamming, errors.New("input byte len not multiple of AES block size")
+	if len(input) % blocksize != 0 {
+		return MaxHamming, errors.New("input byte len not multiple of block size")
 	}
 
-	blockstotest := len(input) / aes.BlockSize
+	blockstotest := len(input) / blocksize
 
 	ham_min = MaxHamming // start the minimum distance at the max possible
 
@@ -265,9 +271,9 @@ func AESDetectECB(input []byte) (ham_min int, err error) {
 	// 1-2, 1-3, 1-4, ... 1-(blockstotest-1)
 	// 2-3, 2-4, 2-5, ... 2-(blockstotest-1)
 	for startblock != blockstotest {
-		block1 := input[startblock*aes.BlockSize:(startblock+1)*aes.BlockSize]
+		block1 := input[startblock*blocksize:(startblock+1)*blocksize]
 		for blocks := startblock+1; blocks < blockstotest; blocks++ {
-			block2 := input[(blocks)*aes.BlockSize:((blocks+1)*aes.BlockSize)]
+			block2 := input[(blocks)*blocksize:((blocks+1)*blocksize)]
 			hamdist, err := HammingDist(block1, block2)
 			if err != nil {
 				return ham_min, err
