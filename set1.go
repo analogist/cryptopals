@@ -156,98 +156,26 @@ func s1c6func() {
 	dist, _ := ca.HammingDist([]byte(s1c6teststr1), []byte(s1c6teststr2))
 	fmt.Printf("Hamming distance: %d\n", dist)
 
-	blockstotest := 30
-	topblockscount := 5
-	fmt.Printf("\nAnalyzing 6.txt with %d key block tests, top %d likely key sizes:\n", blockstotest, topblockscount)
-
-	type keysizestruct struct {
-		Size int
-		Score float32
-		DecodeScore int
-		KeyAttempt []byte
-	}
-	var keysizetestarr []keysizestruct
-
-	s1c6file, err := os.Open("sets-txt/1/6.txt")
-	if err != nil {
-		panic(err)
-	}
-
-	s1c6filestream := bufio.NewReader(s1c6file)
-
-	for keysize := 2; keysize < 40; keysize++ {
-
-		var keysizetest keysizestruct // Holds each stored decode attempt
-
-		// This is slightly more than base64.StdEncoding.EncodedLen() due to '\n'
-		bytestoread := (blockstotest*keysize + 2) * 8 / 6 // every 8 char is 6 bytes
-		bytestoread = bytestoread + bytestoread/60 + 2 // 1 every 60 chars will be garbage due to '\n'
-
-		blockchunks64, err := s1c6filestream.Peek(bytestoread)
-		if err != nil {
-			panic(err)
-		}
-
-		blockchunks, err := ca.DecodeBase64(blockchunks64)
-		if err != nil {
-			panic(err)
-		}
-
-		bytesdecoded := len(blockchunks)
-		if bytesdecoded < blockstotest*keysize {
-			panic("Not enough bytes decoded from base64")
-		}
-
-		hamdistsum := 0
-		for blocks := 0; blocks < blockstotest-1; blocks++ {
-			block1 := blockchunks[blocks*keysize:(blocks+1)*keysize-1]
-			block2 := blockchunks[(blocks+1)*keysize:((blocks+2)*keysize-1)]
-			hamdist, err := ca.HammingDist(block1, block2)
-			if err != nil {
-				panic(err)
-			}
-			hamdistsum += hamdist
-		}
-
-		keysizetest.Size = keysize
-		keysizetest.Score = float32(hamdistsum)/float32(keysize)/float32(blockstotest-1)
-		keysizetest.KeyAttempt = make([]byte, keysize)
-
-		keysizetestarr = append(keysizetestarr, keysizetest)
-	}
-
-	sort.Slice(keysizetestarr, func(i, j int) bool { return keysizetestarr[i].Score < keysizetestarr[j].Score })
-
-	s1c6file.Close()
-
 	s1c6bytes, err := ca.ReadBase64File("sets-txt/1/6.txt")
 	if err != nil {
 		panic(err)
 	}
-	bytesdecoded := len(s1c6bytes)
+
+	maxblocksize := 64
+	topblockscount := 3
+	fmt.Printf("\nAnalyzing 6.txt up to blocksize %d, top %d likely key sizes:\n", maxblocksize, topblockscount)
+
+	blocksizetestarr, err := ca.DecodeBlocksize(s1c6bytes, maxblocksize)
 
 	for ki := 0; ki < topblockscount; ki++ {
-		fmt.Printf("Key size %d hamming distance = %3.2f\n", keysizetestarr[ki].Size, keysizetestarr[ki].Score)
-
-		keysize := keysizetestarr[ki].Size
-		keyattempt := make([]byte, keysize)
-
-		for j := 0; j < keysize; j++ {
-			s1c6_segment := make([]byte, bytesdecoded/keysize)
-			for i := 0; i < bytesdecoded/keysize; i++ {
-				s1c6_segment[i] = s1c6bytes[i*keysize+j]
-			}
-			keyattempt[j] = ca.BruteForce1XOR(s1c6_segment)
-		}
-		keysizetestarr[ki].KeyAttempt = keyattempt
-		keysizetestarr[ki].DecodeScore = ca.ScoreEnglish(ca.XORVigKey(s1c6bytes, keysizetestarr[ki].KeyAttempt))
-
-		fmt.Printf("Most likely key: \"%s\" with score %d\n", keysizetestarr[ki].KeyAttempt, keysizetestarr[ki].DecodeScore)
+		fmt.Printf("Key size %d hamming distance = %3.3f\n", blocksizetestarr[ki].Size, blocksizetestarr[ki].Score)
 	}
 
-	sort.Slice(keysizetestarr, func(i, j int) bool { return keysizetestarr[i].DecodeScore > keysizetestarr[j].DecodeScore })
-	fmt.Printf("\nUsing top-scoring key \"%s\" ", keysizetestarr[0].KeyAttempt)
-	fmt.Printf("most likely decoded plaintext:\n%s", ca.XORVigKey(s1c6bytes, keysizetestarr[0].KeyAttempt))
+	keysize := blocksizetestarr[0].Size
+	keyattempt := ca.BruteForceVig(s1c6bytes, keysize)
+
+	fmt.Printf("\nTop-scoring key for size %d: \"%s\"\n", keysize, keyattempt)
+	fmt.Printf("Most likely decoded plaintext:\n%s", ca.XORVigKey(s1c6bytes, keyattempt))
 
 }
 

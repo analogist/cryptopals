@@ -135,7 +135,7 @@ func ScoreEnglish(input []byte) (score int) {
 	return
 }
 
-// Brute forces Vignere/shifted byte arrays, returns the byte
+// Brute forces Vigenère/shifted byte arrays, returns the byte
 // that decoded to the highest likelihood of plaintext English.
 func BruteForce1XOR(inputstring []byte) (byte) {
 	type keysort struct {
@@ -155,7 +155,7 @@ func BruteForce1XOR(inputstring []byte) (byte) {
 	return keyslice[255].Key
 }
 
-// Implements Vignere cipher, with iterated byte shifts represented by
+// Implements Vigenère cipher, with iterated byte shifts represented by
 // each byte in the byte array key.
 func XORVigKey(input []byte, key []byte) (output []byte) {
 	output = make([]byte, len(input))
@@ -216,6 +216,71 @@ func ReadBase64File(filename string) (datbytes []byte, err error) {
 	datbytes = make([]byte, bytestodecode)
 	bytesdecoded, _ := base64.StdEncoding.Decode(datbytes, datbase64)
 	datbytes = datbytes[:bytesdecoded]
+
+	return
+}
+
+type blocksizestruct struct {
+	Size int
+	Score float32
+}
+
+// Read in input bytes and determine most likely shift block size by
+// Hamming distance.
+func DecodeBlocksize(input []byte, MaxBlockSizeTry int) (blocksizearr []blocksizestruct, err error) {
+	// var blocksizearr []blocksizestruct
+	for blocksize := 2; blocksize < MaxBlockSizeTry; blocksize++ {
+
+		var blocksizetest blocksizestruct // Holds each stored decode attempt
+		blockstotest := len(input) / blocksize
+		if blockstotest < 2 {
+			return []blocksizestruct{}, errors.New("Not enough bytes in input to test blocksize")
+		}
+
+		hamdistsum := 0
+		blocktestcount := 0
+		startblock := 0
+		// Compare:
+		// 0-1, 0-2, 0-3, 0-4, ... 0-(blockstotest-1)
+		// 1-2, 1-3, 1-4, ... 1-(blockstotest-1)
+		// 2-3, 2-4, 2-5, ... 2-(blockstotest-1)
+		for startblock != blockstotest {
+			block1 := input[startblock*blocksize:(startblock+1)*blocksize]
+			for blocks := startblock+1; blocks < blockstotest; blocks++ {
+				block2 := input[(blocks)*blocksize:((blocks+1)*blocksize)]
+				hamdist, err := HammingDist(block1, block2)
+				if err != nil {
+					return []blocksizestruct{}, err
+				}
+				// sums hamming distance
+				hamdistsum += hamdist
+				blocktestcount++
+			}
+			startblock++
+		}
+
+		blocksizetest.Size = blocksize
+		blocksizetest.Score = float32(hamdistsum)/float32(blocksize)/float32(blocktestcount)
+		// hamming distance sum needs to be normalized for blocksize and # of permutation tests
+
+		blocksizearr = append(blocksizearr, blocksizetest)
+	}
+	sort.Slice(blocksizearr, func(i, j int) bool { return blocksizearr[i].Score < blocksizearr[j].Score })
+	return blocksizearr, nil
+}
+
+// Decode most likely Vigenère cipher key given fixed keysize
+func BruteForceVig(input []byte, keysize int) (keyattempt []byte) {
+	bytesdecoded := len(input)
+	keyattempt = make([]byte, keysize)
+
+	for j := 0; j < keysize; j++ {
+		input_segment := make([]byte, bytesdecoded/keysize)
+		for i := 0; i < bytesdecoded/keysize; i++ {
+			input_segment[i] = input[i*keysize+j]
+		}
+		keyattempt[j] = BruteForce1XOR(input_segment)
+	}
 
 	return
 }
