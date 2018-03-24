@@ -13,6 +13,7 @@ import (
 	crand "crypto/rand"
 	mrand "math/rand"
 	"time"
+	// "fmt"
 )
 
 // Basic reimplementation of encoding/hex.Decode()
@@ -560,6 +561,11 @@ func BruteForceAESOracleECB(oraclefunc oracle, blocksize int) (plaintext []byte,
 				// first [BCDEFGHIJKLMNOP][]A
 				// then, [CDEFGHIJKLMNOP][A]B
 				// then, [DEFGHIJKLMNOP][AB]C
+				//
+				// fmt.Printf("[%s][%s]%2x\n",
+				// 	bytes.Replace(myInput, []byte{'\x0a'}, []byte{' '}, -1),
+				// 	bytes.Replace(blocktext[:knownpos], []byte{'\x0a'}, []byte{' '}, -1),
+				// 	byteA)
 				tryInput := append(myInput, blocktext[:knownpos]...)
 				tryInput = append(tryInput, byteA)
 				tryOut, err := oraclefunc(tryInput)
