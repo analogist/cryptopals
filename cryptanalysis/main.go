@@ -8,11 +8,13 @@ import (
 	"sort"
 	"io/ioutil"
 	"bytes"
+	"strings"
 	"encoding/base64"
 	"crypto/aes"
 	crand "crypto/rand"
 	mrand "math/rand"
 	"time"
+	"unicode"
 	// "fmt"
 )
 
@@ -102,37 +104,130 @@ func XOR1Key(input []byte, key byte) (output []byte) {
 	return
 }
 
-// Checks decoding attempts for likelihood of plaintext english.
-// Rates a single byte array as a single score.
-// Positive scores are more likely to be English,
-// Negative scores are more likely to be encrypted bytes.
-func ScoreEnglish(input []byte) (score int) {
-	score = 0
-	for i := 0; i < len(input); i++ {
-		switch {
-		case input[i] >= 'A' && input[i] <= 'Z':
-			fallthrough
-		case input[i] >= 'a' && input[i] <= 'z':
-			fallthrough
-		case input[i] == ' ':
-			score += 2
-		case input[i] >= '0' && input[i] <= '9':
-			score += 2
-		case input[i] >= '!' && input[i] <= '/':
-			fallthrough
-		case input[i] >= '[' && input[i] <= '`':
-			score += 1
-		default:
-			score -= 2
-		}
+var EnglishFrequency = map[rune]float64 {
+	'E': 12.02,
+	'T': 9.10,
+	'A': 8.12,
+	'O': 7.68,
+	'I': 7.31,
+	'N': 6.95,
+	'S': 6.28,
+	'R': 6.02,
+	'H': 5.92,
+	'D': 4.32,
+	'L': 3.98,
+	'U': 2.88,
+	'C': 2.71,
+	'M': 2.61,
+	'F': 2.30,
+	'Y': 2.11,
+	'W': 2.09,
+	'G': 2.03,
+	'P': 1.82,
+	'B': 1.49,
+	'V': 1.11,
+	'K': 0.69,
+	'X': 0.17,
+	'Q': 0.11,
+	'J': 0.10,
+	'Z': 0.07,
+}
 
-		for _, c := range "ETAOINetaoinSHRDLUshrdlu" {
-			if input[i] == byte(c) {
-				score += 2
-			}
+var GermanFrequency = map[rune]float64 {
+	'E': 16.93,
+	'N': 10.53,
+	'I': 8.02,
+	'R': 6.89,
+	'S': 6.42,
+	'T': 5.79,
+	'A': 5.58,
+	'H': 4.98,
+	'D': 4.98,
+	'U': 3.83,
+	'L': 3.60,
+	'C': 3.16,
+	'G': 3.02,
+	'M': 2.55,
+	'O': 2.24,
+	'B': 1.96,
+	'W': 1.78,
+	'F': 1.49,
+	'K': 1.32,
+	'Z': 1.21,
+	'V': 0.84,
+	'P': 0.67,
+	'Ü': 0.65,
+	'Ä': 0.54,
+	'ß': 0.37,
+	'Ö': 0.30,
+	'J': 0.24,
+	'Y': 0.05,
+	'X': 0.05,
+	'Q': 0.02,
+}
+
+// Checks decoding attempts for likelihood of plaintext english.
+// Rates a single byte array as a single score, closer to +0 is better.
+// CharFrequency character set can be overwritten with other langs.
+func ScoreEnglish(input []byte, OverrideFrequency ...map[rune]float64) (score float64) {
+	CharFrequency := EnglishFrequency // default is English
+	if len(OverrideFrequency) > 1 {
+		panic("too many blocksizes specified")
+	} else if len(OverrideFrequency) == 1 {
+		CharFrequency = OverrideFrequency[0] // if you really wanted to override blocksize
+	}
+
+	intext := string(input)
+	textlen := len(intext)
+	intext = strings.ToUpper(intext)
+	charcounts := make(map[rune]int)
+	sumchars := 0
+	score = 0
+
+	for _, c := range(intext) {
+		switch {
+		case !(unicode.IsPrint(c)):
+			score += float64(textlen)*0.8
+			break
+		// case unicode.IsMark(c):
+		// 	score += float64(textlen)*0.3
+		// 	break
+		case unicode.IsSymbol(c):
+			score += float64(textlen)*0.6
+			break
+		case unicode.IsNumber(c):
+			score += float64(textlen)*0.05
+			break
+		case unicode.IsPunct(c):
+			score += float64(textlen)*0.2
+			break
 		}
 	}
+
+	for ch, _ := range CharFrequency {
+		charcounts[ch] = strings.Count(intext, string(ch))
+		sumchars += charcounts[ch]
+	}
+
+	l1dist := float64(0)
+	for ch, v := range CharFrequency {
+		l1dist += abs64(float64(charcounts[ch]) - float64(sumchars)*(v/100))
+	}
+
+	if sumchars < 1 {
+		score += float64(textlen)
+	} else {
+		score += l1dist/float64(sumchars)
+	}
+
 	return
+}
+
+func abs64(x float64) (float64) {
+	if x < 0 {
+		return -1*x
+	}
+	return x
 }
 
 // Brute forces Vigenère/shifted byte arrays, returns the byte
@@ -140,11 +235,12 @@ func ScoreEnglish(input []byte) (score int) {
 func BruteForce1XOR(inputstring []byte) (byte) {
 	type keysort struct {
 		Key byte
-		Score int
+		Score float64
 	}
 
 	keyslice := make([]keysort, 256)
-	for key := byte(0); key < 255; key++ {
+	for i := 0; i < 256; i++ {
+		key := byte(i)
 		inputdecode := XOR1Key(inputstring, key)
 		keyslice[key].Key = key
 		keyslice[key].Score = ScoreEnglish(inputdecode)
@@ -152,7 +248,7 @@ func BruteForce1XOR(inputstring []byte) (byte) {
 
 	sort.Slice(keyslice, func(i, j int) bool { return keyslice[i].Score < keyslice[j].Score })
 
-	return keyslice[255].Key
+	return keyslice[0].Key
 }
 
 // Implements Vigenère cipher, with iterated byte shifts represented by
@@ -222,7 +318,7 @@ func ReadBase64File(filename string) (datbytes []byte, err error) {
 
 type blocksizestruct struct {
 	Size int
-	Score float32
+	Score float64
 }
 
 // Read in input bytes and determine most likely shift block size by
@@ -260,7 +356,7 @@ func DecodeBlocksize(input []byte, MaxBlockSizeTry int) (blocksizearr []blocksiz
 		}
 
 		blocksizetest.Size = blocksize
-		blocksizetest.Score = float32(hamdistsum)/float32(blocksize)/float32(blocktestcount)
+		blocksizetest.Score = float64(hamdistsum)/float64(blocksize)/float64(blocktestcount)
 		// hamming distance sum needs to be normalized for blocksize and # of permutation tests
 
 		blocksizearr = append(blocksizearr, blocksizetest)
@@ -357,6 +453,13 @@ func min(a, b int) (int) {
 		return b
 	}
 	return a
+}
+
+func max(a, b int) (int) {
+	if a > b {
+		return a
+	}
+	return b
 }
 
 // Pads a byte array to arbitrary desired block length with PKCS7 padding.

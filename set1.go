@@ -98,7 +98,7 @@ func s1c4func() {
 	type keysort struct {
 		Line int
 		Key byte
-		Score int
+		Score float64
 		Plaintext []byte
 	}
 
@@ -123,8 +123,9 @@ func s1c4func() {
 			panic(err)
 		}
 
-		for key = 0; key < 255; key++ {
-			s1c4decode := ca.XOR1Key(s1c4line, byte(key))
+		for i := 0; i < 256; i++ {
+			key = byte(i)
+			s1c4decode := ca.XOR1Key(s1c4line, key)
 			keyline.Line = linecount
 			keyline.Key = key
 			keyline.Score = ca.ScoreEnglish(s1c4decode)
@@ -134,9 +135,8 @@ func s1c4func() {
 		}
 	}
 
-	keylen := len(keyslice)
 	sort.Slice(keyslice, func(i, j int) bool { return keyslice[i].Score < keyslice[j].Score })
-	fmt.Printf("Top score: line %d key 0x%2x decrypts to \"%s\"\n", keyslice[keylen-1].Line, keyslice[keylen-1].Key, keyslice[keylen-1].Plaintext)
+	fmt.Printf("Top score: line %d key 0x%2x decrypts to \"%s\"\n", keyslice[0].Line, keyslice[0].Key, keyslice[0].Plaintext)
 }
 
 func s1c5func() {
