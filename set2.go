@@ -30,9 +30,9 @@ func runset2() {
 	fmt.Println("Set 2 / Challenge 12:")
 	s2c12func()
 
-	// fmt.Println("\n-------------------")
-	// fmt.Println("Set 2 / Challenge 13:")
-	// s2c13func()
+	fmt.Println("\n-------------------")
+	fmt.Println("Set 2 / Challenge 13:")
+	s2c13func()
 
 	// fmt.Println("\n-------------------")
 	// fmt.Println("Set 2 / Challenge 14:")
@@ -109,4 +109,8 @@ func s2c12func() {
             panic(err)
         }
 	fmt.Printf("%s\n", plaintext)
+}
+
+func s2c13func() {
+	
 }
